@@ -14,7 +14,7 @@ The sample application is developed using Go. Our development team would like to
 4. Setup GKE cluster with the related resources to run GKE like VPC, Subnets, etc. by following GKE Best Practices using any IaC tools (Bonus point: use Terraform/Terragrunt) 
 **Expected Output:** IaC code 
  
- * Condition: Avoid injecting the generated aws secret/access keys to the application directly. Expected Output: Kustomize manifest, IaC code or anything to complete this task.
+ * Condition: Avoid injecting the generated GCP secret/access keys to the application directly. Expected Output: Kustomize manifest, IaC code or anything to complete this task.
 
  6. Use ArgoCD to deploy this application. To follow GitOps practices, we prefer to have an ArgoCD application defined declaratively in a YAML file if possible. 
 **Expected output:** Yaml files and instruction how to deploy the application or command line 
