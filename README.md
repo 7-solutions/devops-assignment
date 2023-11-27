@@ -2,7 +2,7 @@
 The sample application is developed using Go. Our development team would like to deliver this application to Production. As a DevOps engineer, you are responsible to complete the tasks by following these key areas: High Availability, Scalability, Security. 
 
 **Task:** 
-1. Create a Dockerfile for a given application <be />
+1. Create a Dockerfile for a given application <br />
 **Expected Output**: Dockerfile 
 
 2. Build the image using the Dockerfile and push to Docker Hub 
