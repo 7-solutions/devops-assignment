@@ -16,7 +16,7 @@ The sample application is developed using Go. Our development team would like to
 
 **Expected Output:** Kustomize manifest file to deploy the application
 
-4. Setup GKE cluster with the related resources to run GKE like VPC, Subnets, etc. by following GKE Best Practices using any IaC tools (Bonus point: use Terraform/Terragrunt)
+4. Setup GKE cluster with the related resources to run GKE like VPC, Subnets, etc. by following GKE Best Practices using any IaC tools (Terraform, OpenTufo, Pulumi) (Bonus point: use Terraform/Terragrunt)
 
 **Expected Output:** IaC code
 
