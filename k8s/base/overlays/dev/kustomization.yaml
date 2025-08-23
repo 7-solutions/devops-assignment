@@ -1,0 +1,6 @@
+resources:
+  - ../../base
+
+# Allows dev to override replicas and image tag
+patchesStrategicMerge:
+  - patch.yaml
