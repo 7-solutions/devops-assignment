@@ -10,5 +10,5 @@ resources:
   - servicemonitor.yaml
 images:
   - name: hello-api
-    newName: docker.io/your-dockerhub-username/hello-api
-    newTag: "0.1.0"
+    newName: docker.io/vimrul/hello-api
+    newTag: "124b424a33685eba0d85d9a9636104630fbea5f5"
