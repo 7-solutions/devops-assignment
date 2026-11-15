@@ -1,0 +1,50 @@
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    retentionSize: 8GB
+    serviceMonitorSelectorNilUsesHelmValues: true
+    serviceMonitorNamespaceSelector: {}
+    podMonitorNamespaceSelector: {}
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+
+grafana:
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  persistence:
+    enabled: false
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki-gateway.observability.svc.cluster.local
+      jsonData:
+        maxLines: 1000
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.observability.svc.cluster.local:3200
+      jsonData:
+        tracesToLogsV2:
+          datasourceUid: loki
+          spanStartTimeShift: "1h"
+          spanEndTimeShift: "1h"
+          tags:
+            - key: service.name
+              value: service_name
+          filterByTraceID: false
+          filterBySpanID: false

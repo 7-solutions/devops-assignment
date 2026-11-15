@@ -1,0 +1,10 @@
+project_id = "your-gcp-project-id"
+region     = "asia-southeast1"
+
+# Replace with your current public IPv4 address followed by /32.
+master_authorized_cidrs = [
+  {
+    display_name = "operator-laptop"
+    cidr_block   = "203.0.113.10/32"
+  }
+]

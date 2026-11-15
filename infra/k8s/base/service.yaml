@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-api
+  namespace: hello-api
+  labels:
+    app.kubernetes.io/name: hello-api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: hello-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

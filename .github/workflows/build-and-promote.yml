@@ -1,0 +1,100 @@
+name: Build and promote image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "*.go"
+      - "go.mod"
+      - "go.sum"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "scripts/**"
+      - ".github/workflows/build-and-promote.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: image-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-promote:
+    if: github.ref == 'refs/heads/main' && vars.DOCKERHUB_USERNAME != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check Docker Hub configuration
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          test -n "${DOCKERHUB_USERNAME}" || { echo "Set repository variable DOCKERHUB_USERNAME." >&2; exit 1; }
+          test -n "${DOCKERHUB_TOKEN}" || { echo "Set repository secret DOCKERHUB_TOKEN." >&2; exit 1; }
+
+      - name: Compile application
+        run: go build -trimpath -ldflags="-s -w" ./...
+
+      - name: Sign in to Docker Hardened Images
+        uses: docker/login-action@v3
+        with:
+          registry: dhi.io
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Sign in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push commit-tagged image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: docker.io/${{ vars.DOCKERHUB_USERNAME }}/hello-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Propose GitOps image update
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          IMAGE_TAG: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ -z "${DOCKERHUB_USERNAME}" ]]; then
+            echo "Set the repository variable DOCKERHUB_USERNAME before running this workflow." >&2
+            exit 1
+          fi
+          sed -i "s|newName: .*|newName: docker.io/${DOCKERHUB_USERNAME}/hello-api|" infra/k8s/base/kustomization.yaml
+          sed -i "s|newTag: .*|newTag: \"${IMAGE_TAG}\"|" infra/k8s/base/kustomization.yaml
+
+      - name: Open image promotion pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: infra/k8s/base/kustomization.yaml
+          branch: gitops/promote-${{ github.sha }}
+          delete-branch: true
+          title: "chore(gitops): promote hello-api ${{ github.sha }}"
+          commit-message: "chore(gitops): promote hello-api ${{ github.sha }}"
+          body: |
+            This pull request promotes the image built from commit `${{ github.sha }}`.
+
+            Merge after reviewing the build. Argo CD will sync the updated Kustomize image tag.
+          draft: false

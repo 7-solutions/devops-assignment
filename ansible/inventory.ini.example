@@ -1,0 +1,2 @@
+[app_servers]
+server-1 ansible_host=203.0.113.20 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_ed25519

@@ -1,0 +1,16 @@
+.git
+.github
+ansible
+docs
+infra
+observability
+*.md
+Dockerfile
+.dockerignore
+Makefile
+terraform.tfvars
+*.tfstate
+*.tfstate.backup
+*.tfplan
+bin
+hello-api

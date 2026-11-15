@@ -1,0 +1,18 @@
+# Terraform local state and provider cache
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+terraform.tfvars
+
+# Ansible local inventory and generated files
+ansible/inventory.ini
+*.retry
+
+# Go build output
+/bin/
+/hello-api
+
+# Local environment files
+.env

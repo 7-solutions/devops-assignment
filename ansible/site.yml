@@ -1,0 +1,158 @@
+---
+- name: Configure Linux application servers
+  hosts: app_servers
+  become: true
+  vars:
+    node_exporter_arch: "{{ node_exporter_arch_map[ansible_architecture] }}"
+    node_exporter_archive: "node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}.tar.gz"
+    node_exporter_extract_dir: "/opt/node_exporter-{{ node_exporter_version }}"
+  tasks:
+    - name: Update apt cache and upgrade installed packages
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Install Docker and support packages
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - python3-docker
+          - ca-certificates
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Ensure Docker config directory exists
+      ansible.builtin.file:
+        path: /etc/docker
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configure Docker log rotation
+      ansible.builtin.template:
+        src: templates/daemon.json.j2
+        dest: /etc/docker/daemon.json
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Docker
+
+    - name: Ensure Docker is enabled and running
+      ansible.builtin.service:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Create NGINX content directory
+      ansible.builtin.file:
+        path: "{{ nginx_content_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Render custom NGINX home page
+      ansible.builtin.template:
+        src: templates/index.html.j2
+        dest: "{{ nginx_content_dir }}/index.html"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Run NGINX container with the rendered page
+      community.docker.docker_container:
+        name: "{{ nginx_container_name }}"
+        image: "{{ nginx_image }}"
+        state: started
+        pull: true
+        restart_policy: always
+        published_ports:
+          - "{{ nginx_host_port }}:80"
+        volumes:
+          - "{{ nginx_content_dir }}:/usr/share/nginx/html:ro"
+
+    - name: Create dedicated non-login Node Exporter group
+      ansible.builtin.group:
+        name: node_exporter
+        system: true
+        state: present
+
+    - name: Create dedicated non-login Node Exporter user
+      ansible.builtin.user:
+        name: node_exporter
+        group: node_exporter
+        system: true
+        shell: /usr/sbin/nologin
+        home: /nonexistent
+        create_home: false
+        state: present
+
+    - name: Create Node Exporter installation directory
+      ansible.builtin.file:
+        path: "{{ node_exporter_extract_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Download Node Exporter archive
+      ansible.builtin.get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/{{ node_exporter_archive }}"
+        dest: "/tmp/{{ node_exporter_archive }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Extract Node Exporter
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ node_exporter_archive }}"
+        dest: "{{ node_exporter_extract_dir }}"
+        remote_src: true
+        creates: "{{ node_exporter_extract_dir }}/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}/node_exporter"
+
+    - name: Install Node Exporter binary
+      ansible.builtin.copy:
+        src: "{{ node_exporter_extract_dir }}/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}/node_exporter"
+        dest: /usr/local/bin/node_exporter
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart Node Exporter
+
+    - name: Configure Node Exporter systemd service
+      ansible.builtin.template:
+        src: templates/node-exporter.service.j2
+        dest: /etc/systemd/system/node_exporter.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart Node Exporter
+
+    - name: Ensure Node Exporter is enabled and running
+      ansible.builtin.systemd:
+        name: node_exporter
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  handlers:
+    - name: Restart Docker
+      ansible.builtin.service:
+        name: docker
+        state: restarted
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart Node Exporter
+      ansible.builtin.systemd:
+        name: node_exporter
+        state: restarted
+        daemon_reload: true

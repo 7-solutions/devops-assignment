@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-api-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  hello-api.json: |
+    {
+      "id": null,
+      "uid": "hello-api-overview",
+      "title": "Hello API / Production Overview",
+      "tags": ["hello-api", "kubernetes"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Greeting requests per second",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "sum(rate(hello_api_requests_total[5m]))", "legendFormat": "requests/sec", "refId": "A"}]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Ready API pods",
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "sum(kube_pod_status_ready{namespace=\"hello-api\",condition=\"true\"})", "refId": "A"}],
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Container restarts (15m)",
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"hello-api\"}[15m]))", "legendFormat": "restarts", "refId": "A"}]
+        },
+        {
+          "id": 4,
+          "type": "logs",
+          "title": "Application and cluster logs",
+          "gridPos": {"h": 10, "w": 12, "x": 0, "y": 8},
+          "datasource": {"type": "loki", "uid": "loki"},
+          "targets": [{"expr": "{namespace=\"hello-api\"}", "refId": "A"}]
+        },
+        {
+          "id": 5,
+          "type": "traces",
+          "title": "Hello API traces",
+          "gridPos": {"h": 10, "w": 12, "x": 12, "y": 8},
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "targets": [{"queryType": "traceql", "query": "{ resource.service.name = \"hello-api\" }", "refId": "A"}]
+        }
+      ]
+    }
